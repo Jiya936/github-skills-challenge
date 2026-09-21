@@ -70,3 +70,31 @@ def test_consumer_receives_event():
     messages = consumer.consume()
 
     assert len(messages) == 1
+
+
+def test_pipeline_consumes_detected_events_from_same_topic():
+    result = run_pipeline("data/service_data.json")
+
+    assert result["records_processed"] == 10
+    assert len(result["anomalies_detected"]) == 2
+    assert len(result["events_consumed"]) == 2
+    assert all(event["type"] == "ANOMALY" for event in result["events_consumed"])
+
+
+def test_error_logs_are_registered_as_concerning():
+    detector = AnomalyDetector()
+
+    record = {
+        "timestamp": "2026-09-20T10:05:00",
+        "service": "payment-service",
+        "response_time_ms": 610,
+        "cpu_percent": 75,
+        "memory_percent": 70,
+        "log_level": "ERROR",
+        "message": "Payment service timeout"
+    }
+
+    event = detector.detect(record)
+
+    assert event is not None
+    assert "Error log detected" in event["reasons"]
